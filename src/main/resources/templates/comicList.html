@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="list.css">
+    <title>Title</title>
+</head>
+<body>
+    <header class="site-header">
+        <div class="header-inner">
+            <a href="/titleSelect">購読作品を選択する</a>
+            <span th:if="${#lists.isEmpty(comics)}" style="font-size: small; font-weight: normal;">
+               ←のリンクから、購読している作品を選択してきてください。
+            </span>
+        </div>
+    </header>
+    <div class="main-container">
+        <ul class="titles">
+            <li  class="titles" th:each="comic : ${comics}">
+                <a th:href="${comic.latestUrl}" th:text="${comic.name}" target="_blank" style="font-weight: bold;"></a>
+                <span th:text="${comic.updateDate}" style="font-size: small; font-weight: normal;"></span>
+            </li>
+        </ul>
+    </div>
+</body>
+</html>

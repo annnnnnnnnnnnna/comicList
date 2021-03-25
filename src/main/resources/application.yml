@@ -1,0 +1,19 @@
+spring:
+  datasource:
+    url: jdbc:mysql://*:3306/schedule
+    username: *
+    password: *
+    driver-class-name: org.mariadb.jdbc.Driver
+
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
+
+logging:
+  level:
+    org:
+      springframework: WARN
+    jp:
+      annnnnnna:
+        comicList:
+          mapper: DEBUG

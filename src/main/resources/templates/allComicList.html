@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="list.css">
+    <script src="knockout-3.5.1.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+    <script type="text/javascript" src="titleSelect.js"></script>
+    <title>Title</title>
+</head>
+<body onload="loaded()">
+    <header class="site-header">
+        <div class="header-inner">
+            <a href="/">戻る</a>
+            <span style="font-size: small; font-weight: normal;">
+                ※チェックボックス変更時にCookieに保存しているので、そのまま戻ってOKです
+            </span>
+        </div>
+    </header>
+    <div class="main-container">
+        <ul class="platforms" >
+            <li class="platforms" th:each="platform : ${platforms}">
+                <span th:text="${'▶ '+platform.name}" th:id="${'t_'+platform.id}" th:attr="onclick=|loadTitles(${platform.id})|"></span>
+                <ul class="titles" th:id="${platform.id}" data-bind="foreach: titles" style="display:none;">
+                    <li class="titles">
+                        <input type="checkbox" onChange="change(this);" data-bind="value: id, checked: chked"/>
+                        <span data-bind="text: name" style="font-weight: bold;"></span>
+                        <span data-bind="text: lastUpdatedAt" style="font-size: small; font-weight: normal;"></span>
+                    </li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+</body>
+</html>

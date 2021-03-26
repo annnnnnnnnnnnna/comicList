@@ -57,13 +57,15 @@ class SundayScrapingApiImpl:
         return if (updateDate.isNullOrEmpty()) null else SimpleDateFormat(platformSetting[updateDateFormat]!!).parse(updateDate)
     }
 
-    override fun getTitlesApiCustom(platform: Platform, platformSetting: Map<String, String>): Int {
+    override fun getTitlesApiCustom(platform: Platform, platformSetting: Map<String, String>, titles: MutableList<Title>): List<Int> {
         val id = titleMapper.findAll().size + 1
         val doc: Document = Jsoup.connect(platformSetting[titleListUrl]!!).get()
 
         val node = doc.select(platformSetting[titleListKey]!!)
 
-        return node.getTitlesFromHtmlElements(platform, platformSetting, id)
+        val ret = mutableListOf<Int>()
+        ret.addAll(node.getTitlesFromHtmlElements(platform, platformSetting, id, titles))
+        return ret
     }
 
     override fun getUpdateDateApiCustom(platform: Platform, title: Title, platformSetting: Map<String, String>): UpdateInfo {

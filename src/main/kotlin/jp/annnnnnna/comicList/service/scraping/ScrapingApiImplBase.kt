@@ -14,8 +14,8 @@ interface ScrapingApiImplBase {
     var titleMapper: TitleMapper
     var platformMapper: PlatformMapper
     var objectMapper: ObjectMapper
-
     var settingKeys: Set<String>
+
     fun checkSetting(platformSetting: JsonNode): Map<String, String> {
         val ret = mutableMapOf<String, String>()
         settingKeys.forEach {
@@ -30,30 +30,35 @@ interface ScrapingApiImplBase {
 
     fun getTitlesApi(platform: Platform, platformSetting: Map<String, String>) {
         try {
-            if (getTitlesApiCustom(platform, platformSetting) > 0) {
-                platformMapper.updateLastCheckDate(platform.id)
+            val titles = mutableListOf<Title>().apply{
+                addAll(titleMapper.findByPlatformId(platform.id))
+            }
+            val notFound = getTitlesApiCustom(platform, platformSetting, titles)
+            platformMapper.updateLastCheckDate(platform.id)
+            notFound.forEach {
+                titleMapper.finish(it)
             }
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
-    fun getTitlesApiCustom(platform: Platform, platformSetting: Map<String, String>): Int
-    fun insertIfNotExist(titleName: String, id: Int, paramMap: Map<String,String>, platform: Platform, platformSetting: Map<String, String>): Boolean {
-        if (titleMapper.findByName(platform.id, titleName).isEmpty()) {
-            titleMapper.insert(
-                    Title(
-                            id,
-                            titleName,
-                            platform.id,
-                            0,
-                            null,
-                            null,
-                            makeUrl(platformSetting, paramMap),
-                            makeUrl(platformSetting, paramMap),
-                            makeDataUrl(platformSetting, paramMap),
-                            false
-                    )
+    fun getTitlesApiCustom(platform: Platform, platformSetting: Map<String, String>, titles: MutableList<Title>): List<Int>
+    fun insertIfNotExist(titleName: String, id: Int, paramMap: Map<String,String>, platform: Platform, platformSetting: Map<String, String>, titles: MutableList<Title>): Boolean {
+        val title = titles.find { it.name  == titleName }
+        if (title == null) {
+            val newTitle = Title(
+                    id,
+                    titleName,
+                    platform.id,
+                    0,
+                    null,
+                    null,
+                    makeUrl(platformSetting, paramMap),
+                    makeUrl(platformSetting, paramMap),
+                    makeDataUrl(platformSetting, paramMap),
+                    false
             )
+            titleMapper.insert(newTitle)
             return true
         }
         return false

@@ -61,12 +61,12 @@ internal class TitleMapperProvider{
     }.toString()
 
     fun findByPlatformId(): String = Title::class.select().apply{
-        WHERE( "platform = #{id}")
+        WHERE( "platform = #{id}", "finished = false")
         ORDER_BY("finished", "name")
     }.toString()
 
     fun findByIds(ids: List<Int>): String = Title::class.select().apply{
-        WHERE( "id in (${ids.joinToString(",")})")
+        WHERE( "id in (${ids.joinToString(",")})", "finished = false")
         ORDER_BY("last_updated_at desc", "name")
     }.toString()
 }

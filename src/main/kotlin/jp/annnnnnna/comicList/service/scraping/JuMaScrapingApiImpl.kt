@@ -63,17 +63,17 @@ class JuMaScrapingApiImpl:
         return if (updateDate.isNullOrEmpty()) null else SimpleDateFormat(platformSetting[updateDateFormat]!!).parse(updateDate)
     }
 
-    override fun getTitlesApiCustom(platform: Platform, platformSetting: Map<String, String>): Int {
+    override fun getTitlesApiCustom(platform: Platform, platformSetting: Map<String, String>, titles: MutableList<Title>): List<Int> {
         val id = titleMapper.findAll().size + 1
 
-        var updateCount = 0
+        val ret = mutableListOf<Int>()
         platformSetting[titleListUrl]!!.split(" ").forEach {
             val doc: Document = Jsoup.connect(it).get()
             val node = doc.select(platformSetting[titleListKey]!!)
-            updateCount += node.getTitlesFromHtmlElements(platform, platformSetting, id)
+            ret.addAll(node.getTitlesFromHtmlElements(platform, platformSetting, id, titles))
         }
 
-        return updateCount
+        return ret
     }
 
     override fun getUpdateDateApiCustom(platform: Platform, title: Title, platformSetting: Map<String, String>): UpdateInfo {

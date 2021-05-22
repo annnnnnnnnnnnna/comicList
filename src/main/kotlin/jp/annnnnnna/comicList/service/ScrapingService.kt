@@ -4,13 +4,13 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import jp.annnnnnna.comicList.mapper.PlatformMapper
 import jp.annnnnnna.comicList.mapper.ScrapingHistoryMapper
 import jp.annnnnnna.comicList.mapper.TitleMapper
+import jp.annnnnnna.comicList.model.ScrapingHistory
 import jp.annnnnnna.comicList.service.scraping.ScrapingApiImplBase
 import org.jsoup.HttpStatusException
 import org.jsoup.Jsoup
 import org.springframework.stereotype.Service
 import java.util.*
 import kotlin.reflect.full.createInstance
-
 
 @Service
 class ScrapingService (
@@ -34,13 +34,26 @@ class ScrapingService (
     }
 
     fun update() {
-        if (Calendar.getInstance().apply { add(Calendar.MINUTE, -30) }.time < scrapingHistoryMapper.findLatest().lastCheckedAt) {
+        if (Calendar.getInstance(TimeZone.getDefault()).apply {
+                add(Calendar.MILLISECOND, TimeZone.getTimeZone("JST").rawOffset - TimeZone.getDefault().rawOffset)
+                add(Calendar.MINUTE, -30)
+        }.time < scrapingHistoryMapper.findLatest().lastCheckedAt) {
             // 30分以内の再起動はしない
             return
         }
-        scrapingHistoryMapper.insert()
 
-        val yesterday = Calendar.getInstance().apply { add(Calendar.DATE, -1) }.time
+        val now = Calendar.getInstance().apply {
+            add(Calendar.MILLISECOND, TimeZone.getTimeZone("JST").rawOffset - TimeZone.getDefault().rawOffset)
+        }.time
+        scrapingHistoryMapper.insert(ScrapingHistory(now))
+
+        val yesterday = Calendar.getInstance().apply {
+            add(Calendar.MILLISECOND, TimeZone.getTimeZone("JST").rawOffset - TimeZone.getDefault().rawOffset)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.time
 
         val platforms = platformMapper.findAll()
         platforms.forEach { platform ->
@@ -48,7 +61,7 @@ class ScrapingService (
             val settingMap = scrapingService.checkSetting(objectMapper.readTree(platform.settingsJson))
 
             if ((platform.lastCheckedAt == null ||  platform.lastCheckedAt < yesterday)
-                    && Calendar.getInstance().get(Calendar.HOUR_OF_DAY) >= platform.updateTime) {
+                    && Calendar.getInstance(TimeZone.getTimeZone("JST")).get(Calendar.HOUR_OF_DAY) >= platform.updateTime) {
                 try {
                     scrapingService.getTitlesApi(platform, settingMap)
                 } catch (e: Exception) {
@@ -64,7 +77,8 @@ class ScrapingService (
                         e.printStackTrace()
                     }
                 }
-                platformMapper.updateLastCheckDate(platform.id)
+
+                platformMapper.updateLastCheckDate(platform.id, now)
             }
         }
     }

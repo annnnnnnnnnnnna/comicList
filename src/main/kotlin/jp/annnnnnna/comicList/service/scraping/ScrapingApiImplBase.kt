@@ -33,8 +33,25 @@ interface ScrapingApiImplBase {
             val titles = mutableListOf<Title>().apply{
                 addAll(titleMapper.findByPlatformId(platform.id))
             }
-            val notFound = getTitlesApiCustom(platform, platformSetting, titles)
-            platformMapper.updateLastCheckDate(platform.id)
+
+            val titleList = getTitlesApiCustom(platform, platformSetting, titles)
+
+            var id = titleMapper.findAll().size + 1
+            var updateCount = 0
+            var notFound = titles.map{ it.id }
+            titleList.forEach { title ->
+                if (insertIfNotExist(id, title, titles)) {
+                    id++
+                    updateCount++
+                } else {
+                    notFound = notFound.minus(titles.find {it.name == title.name}?.id?: -1)
+                }
+            }
+
+            val now = Calendar.getInstance().apply {
+                add(Calendar.MILLISECOND, TimeZone.getTimeZone("JST").rawOffset - TimeZone.getDefault().rawOffset)
+            }.time
+            platformMapper.updateLastCheckDate(platform.id, now)
             notFound.forEach {
                 titleMapper.finish(it)
             }
@@ -42,48 +59,53 @@ interface ScrapingApiImplBase {
             e.printStackTrace()
         }
     }
-    fun getTitlesApiCustom(platform: Platform, platformSetting: Map<String, String>, titles: MutableList<Title>): List<Int>
-    fun insertIfNotExist(titleName: String, id: Int, paramMap: Map<String,String>, platform: Platform, platformSetting: Map<String, String>, titles: MutableList<Title>): Boolean {
-        val title = titles.find { it.name  == titleName }
+    fun getTitlesApiCustom(platform: Platform, platformSetting: Map<String, String>, titles: MutableList<Title>): List<Title>
+    fun insertIfNotExist(id: Int, newTitle: Title, titles: MutableList<Title>): Boolean {
+        val title = titles.find { it.name  == newTitle.name }
         if (title == null) {
-            val newTitle = Title(
+            titleMapper.insert(
+                Title(
                     id,
-                    titleName,
-                    platform.id,
+                    newTitle.name,
+                    newTitle.platform,
                     0,
                     null,
                     null,
-                    makeUrl(platformSetting, paramMap),
-                    makeUrl(platformSetting, paramMap),
-                    makeDataUrl(platformSetting, paramMap),
+                    newTitle.latestUrl,
+                    newTitle.url,
+                    newTitle.updateCheckUrl,
                     false
+                )
             )
-            titleMapper.insert(newTitle)
             return true
         }
         return false
     }
+
     fun makeUrl(platformSetting: Map<String, String>, paramMap: Map<String, String>): String
     fun makeLatestUrl(platformSetting: Map<String, String>, paramMap: Map<String, String>): String
     fun makeDataUrl(platformSetting: Map<String, String>, paramMap: Map<String, String>): String
     fun makeUpdateDate(platformSetting: Map<String, String>, updateDate:String?): Date?
 
-    private fun needCheck(lastCheckedAt: Date?, days: Int): Boolean {
+    private fun needCheck(lastCheckedAt: Date?, days: Int, platform: Platform): Boolean {
         if (lastCheckedAt == null) return true
         val next = Calendar.getInstance().apply {
             time = lastCheckedAt
-            add(Calendar.DATE, days) }.time
-        val now = Calendar.getInstance().time
-        return next <= now
+            add(Calendar.DATE, days)
+            set(Calendar.HOUR_OF_DAY, platform.updateTime)
+            set(Calendar.MINUTE, 5) // 更新後5分まで一応あける
+        }.time
+        val now = Calendar.getInstance().apply {
+            add(Calendar.MILLISECOND, TimeZone.getTimeZone("JST").rawOffset - TimeZone.getDefault().rawOffset)
+        }.time
+        return next < now
     }
     fun getUpdateDateApi(platform: Platform, title: Title, platformSetting: Map<String, String>) {
-        if (title.finished || !needCheck(title.lastCheckedAt, title.frequency)) {
+        if (title.finished || !needCheck(title.lastCheckedAt, title.frequency, platform)) {
             return
         }
-        val today = Calendar.getInstance()
-        if (Calendar.getInstance().get(Calendar.HOUR_OF_DAY) < platform.updateTime) {
-            // 10時更新のサイトとかは10時まではチェックしに行かない
-            return
+        val today = Calendar.getInstance().apply {
+            add(Calendar.MILLISECOND, TimeZone.getTimeZone("JST").rawOffset - TimeZone.getDefault().rawOffset)
         }
 
         val updateInfo = getUpdateDateApiCustom(platform, title, platformSetting)
@@ -91,12 +113,16 @@ interface ScrapingApiImplBase {
         Thread.sleep(10000) // 各作品の情報取得はとりあえず10秒間隔にしておく
         if (updateInfo.updateDate == null) {
             if (title.lastUpdatedAt != null) title.finished = true
-            title.lastCheckedAt = Calendar.getInstance().time
+            title.lastCheckedAt = Calendar.getInstance().apply {
+                add(Calendar.MILLISECOND, TimeZone.getTimeZone("JST").rawOffset - TimeZone.getDefault().rawOffset)
+            }.time
             if (title.frequency == 0) title.frequency = 1
         } else {
 //            if (title.lastUpdatedAt == updateInfo.updateDate) return
             val diff = when (title.lastUpdatedAt) {
-                null -> dateDiff(updateInfo.updateDate, Calendar.getInstance().time)
+                null -> dateDiff(updateInfo.updateDate, Calendar.getInstance().apply {
+                    add(Calendar.MILLISECOND, TimeZone.getTimeZone("JST").rawOffset - TimeZone.getDefault().rawOffset)
+                }.time)
                 updateInfo.updateDate -> dateDiff(updateInfo.updateDate, title.lastCheckedAt!!)
                 else -> dateDiff(updateInfo.updateDate, title.lastUpdatedAt!!)
             }
@@ -106,6 +132,7 @@ interface ScrapingApiImplBase {
                 2 -> 14
                 else -> 35 // 1年以上更新がないようなものの扱いについて要考慮
             }
+
             val lastCheckedAt = Calendar.getInstance()
             lastCheckedAt.time = updateInfo.updateDate
             while (lastCheckedAt <= today) { lastCheckedAt.add(Calendar.DATE, title.frequency) }

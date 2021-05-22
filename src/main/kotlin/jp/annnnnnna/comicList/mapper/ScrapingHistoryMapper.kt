@@ -4,15 +4,11 @@ import jp.annnnnnna.comicList.model.ScrapingHistory
 import org.apache.ibatis.annotations.InsertProvider
 import org.apache.ibatis.annotations.Mapper
 import org.apache.ibatis.annotations.SelectProvider
-import org.apache.ibatis.annotations.UpdateProvider
-import org.apache.ibatis.jdbc.SQL
-import kotlin.reflect.full.memberProperties
-import kotlin.reflect.full.primaryConstructor
 
 @Mapper
 interface ScrapingHistoryMapper {
     @InsertProvider(type = ScrapingHistoryMapperProvider::class, method ="insert")
-    fun insert(): Int
+    fun insert(data: ScrapingHistory): Int
 
     @SelectProvider(type = ScrapingHistoryMapperProvider::class, method ="findLatest")
     fun findLatest(): ScrapingHistory

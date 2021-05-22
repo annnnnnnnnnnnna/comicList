@@ -10,25 +10,30 @@ interface GetTitlesFromHtmlElementsInterface: ScrapingApiImplBase {
     fun Element.getPathFromHtmlElement(platformSetting: Map<String, String>): String
     fun Element.getComicIdFromHtmlElement(platformSetting: Map<String, String>): String
 
-    fun Elements.getTitlesFromHtmlElements(platform: Platform, platformSetting: Map<String, String>, idBegin:Int, titles: MutableList<Title>): List<Int> {
-        var id = idBegin
-        var updateCount = 0
-        var ret = titles.map{ it.id }
-        forEach {
+    fun Elements.getTitlesFromHtmlElements(
+        platform: Platform,
+        platformSetting: Map<String, String>
+    ): List<Title> {
+        return map {
             val titleName = it.getTitleNameFromHtmlElement(platformSetting)
             val path = it.getPathFromHtmlElement(platformSetting)
             val comicId = it.getComicIdFromHtmlElement(platformSetting)
 
             val mp = makeParamMap(path, comicId)
 
-            if (insertIfNotExist(titleName, id, mp, platform, platformSetting, titles)) {
-                id++
-                updateCount++
-            } else {
-                ret = ret.minus(titles.find {it.name == titleName}?.id?: -1)
-            }
+            Title(
+                -1,
+                titleName,
+                platform.id,
+                0,
+                null,
+                null,
+                makeUrl(platformSetting, mp),
+                makeUrl(platformSetting, mp),
+                makeDataUrl(platformSetting, mp),
+                false
+            )
         }
-        return ret
     }
 
     private fun makeParamMap(path:String, comicId: String): Map<String, String> {

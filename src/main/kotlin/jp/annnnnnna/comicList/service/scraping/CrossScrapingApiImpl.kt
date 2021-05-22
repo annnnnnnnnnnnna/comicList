@@ -58,17 +58,14 @@ class CrossScrapingApiImpl :
         return if (updateDate.isNullOrEmpty()) null else SimpleDateFormat(platformSetting[updateDateFormat]!!).parse(updateDate)
     }
 
-    override fun getTitlesApiCustom(platform: Platform, platformSetting: Map<String, String>, titles: MutableList<Title>): List<Int> {
-        val id = titleMapper.findAll().size + 1
+    override fun getTitlesApiCustom(platform: Platform, platformSetting: Map<String, String>, titles: MutableList<Title>): List<Title> {
         val doc: String = Jsoup.connect(platformSetting[titleListUrl]!!)
                 .ignoreContentType(true)
                 .execute()
                 .body()
 
         val node: JsonNode = objectMapper.readTree(doc)
-        val ret = mutableListOf<Int>()
-        ret.addAll(node[platformSetting[titleListKey]!!].getTitlesFromJsonNode(platform, platformSetting, id, titles))
-        return ret
+        return node[platformSetting[titleListKey]!!].getTitlesFromJsonNode(platform, platformSetting)
     }
 
     override fun getUpdateDateApiCustom(platform: Platform, title: Title, platformSetting: Map<String, String>): UpdateInfo {

@@ -7,6 +7,7 @@ import jp.annnnnnna.comicList.mapper.TitleMapper
 import jp.annnnnnna.comicList.model.Platform
 import jp.annnnnnna.comicList.model.Title
 import jp.annnnnnna.comicList.model.UpdateInfo
+import jp.annnnnnna.comicList.service.getNowInJST
 import java.util.*
 
 interface ScrapingApiImplBase {
@@ -48,9 +49,7 @@ interface ScrapingApiImplBase {
                 }
             }
 
-            val now = Calendar.getInstance().apply {
-                add(Calendar.MILLISECOND, TimeZone.getTimeZone("JST").rawOffset - TimeZone.getDefault().rawOffset)
-            }.time
+            val now = getNowInJST().time
             platformMapper.updateLastCheckDate(platform.id, now)
             notFound.forEach {
                 titleMapper.finish(it)
@@ -95,34 +94,25 @@ interface ScrapingApiImplBase {
             set(Calendar.HOUR_OF_DAY, platform.updateTime)
             set(Calendar.MINUTE, 5) // 更新後5分まで一応あける
         }.time
-        val now = Calendar.getInstance().apply {
-            add(Calendar.MILLISECOND, TimeZone.getTimeZone("JST").rawOffset - TimeZone.getDefault().rawOffset)
-        }.time
+        val now = getNowInJST().time
         return next < now
     }
     fun getUpdateDateApi(platform: Platform, title: Title, platformSetting: Map<String, String>) {
         if (title.finished || !needCheck(title.lastCheckedAt, title.frequency, platform)) {
             return
         }
-        val today = Calendar.getInstance().apply {
-            add(Calendar.MILLISECOND, TimeZone.getTimeZone("JST").rawOffset - TimeZone.getDefault().rawOffset)
-        }
+        val today = getNowInJST()
 
         val updateInfo = getUpdateDateApiCustom(platform, title, platformSetting)
 
         Thread.sleep(10000) // 各作品の情報取得はとりあえず10秒間隔にしておく
         if (updateInfo.updateDate == null) {
             if (title.lastUpdatedAt != null) title.finished = true
-            title.lastCheckedAt = Calendar.getInstance().apply {
-                add(Calendar.MILLISECOND, TimeZone.getTimeZone("JST").rawOffset - TimeZone.getDefault().rawOffset)
-            }.time
+            title.lastCheckedAt = getNowInJST().time
             if (title.frequency == 0) title.frequency = 1
         } else {
-//            if (title.lastUpdatedAt == updateInfo.updateDate) return
             val diff = when (title.lastUpdatedAt) {
-                null -> dateDiff(updateInfo.updateDate, Calendar.getInstance().apply {
-                    add(Calendar.MILLISECOND, TimeZone.getTimeZone("JST").rawOffset - TimeZone.getDefault().rawOffset)
-                }.time)
+                null -> dateDiff(updateInfo.updateDate, getNowInJST().time)
                 updateInfo.updateDate -> dateDiff(updateInfo.updateDate, title.lastCheckedAt!!)
                 else -> dateDiff(updateInfo.updateDate, title.lastUpdatedAt!!)
             }
@@ -133,8 +123,9 @@ interface ScrapingApiImplBase {
                 else -> 35 // 1年以上更新がないようなものの扱いについて要考慮
             }
 
-            val lastCheckedAt = Calendar.getInstance()
-            lastCheckedAt.time = updateInfo.updateDate
+            val lastCheckedAt = Calendar.getInstance().apply {
+                time = updateInfo.updateDate
+            }
             while (lastCheckedAt <= today) { lastCheckedAt.add(Calendar.DATE, title.frequency) }
             if (lastCheckedAt > today) {
                 lastCheckedAt.add(Calendar.DATE, -1 * title.frequency)

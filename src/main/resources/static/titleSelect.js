@@ -60,7 +60,7 @@ function change(e) {
     else read.pop(e.value);
 
 	var titles = read.join('-');
-    document.cookie = 'titles=' + titles;
+    document.cookie = 'titles=' + titles + ";max-age=" + 60*60*24*365*10;
 }
 
 var tmp = document
